@@ -7,14 +7,21 @@ RUN apt-get update && apt-get install -y \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
+
 COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
 
-RUN npm install && npm run build
+RUN npm install
+RUN npm run build
 
-RUN php artisan migrate --force
+RUN php artisan key:generate --force || true
+RUN php artisan migrate --force || true
+RUN php artisan db:seed --force || true
 
 RUN php artisan config:clear
+RUN php artisan cache:clear
+RUN php artisan route:clear
+RUN php artisan view:clear
 
 CMD php artisan serve --host=0.0.0.0 --port=${PORT}
