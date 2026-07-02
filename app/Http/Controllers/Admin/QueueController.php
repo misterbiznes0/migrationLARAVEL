@@ -10,8 +10,14 @@ class QueueController extends Controller
 {
     private function adminOnly()
     {
-        // Временно отключено для демонстрации
-        return;
+        if (!auth()->check()) {
+            redirect()->route('login')->send();
+            exit;
+        }
+
+        if (!auth()->user()->is_admin) {
+            abort(403);
+        }
     }
 
     public function index(Request $request)
@@ -20,10 +26,7 @@ class QueueController extends Controller
 
         $status = $request->get('status', 'all');
 
-        $query = QueueTicket::with([
-            'appointment.user',
-            'appointment.service'
-        ])->latest();
+        $query = QueueTicket::with(['appointment.user', 'appointment.service'])->latest();
 
         if ($status !== 'all') {
             $query->where('status', $status);
@@ -39,24 +42,18 @@ class QueueController extends Controller
             'cancelled' => QueueTicket::where('status', 'cancelled')->count(),
         ];
 
-        return view('admin.queue.index', compact(
-            'tickets',
-            'stats',
-            'status'
-        ));
+        return view('admin.queue.index', compact('tickets', 'stats', 'status'));
     }
 
     public function call(QueueTicket $ticket)
     {
         $this->adminOnly();
 
-        $ticket->update([
-            'status' => 'called'
-        ]);
+        $ticket->update(['status' => 'called']);
 
-        $ticket->appointment->update([
-            'status' => 'called'
-        ]);
+        if ($ticket->appointment) {
+            $ticket->appointment->update(['status' => 'called']);
+        }
 
         return back()->with('success', 'Посетитель вызван.');
     }
@@ -65,13 +62,11 @@ class QueueController extends Controller
     {
         $this->adminOnly();
 
-        $ticket->update([
-            'status' => 'done'
-        ]);
+        $ticket->update(['status' => 'done']);
 
-        $ticket->appointment->update([
-            'status' => 'done'
-        ]);
+        if ($ticket->appointment) {
+            $ticket->appointment->update(['status' => 'done']);
+        }
 
         return back()->with('success', 'Приём завершён.');
     }
@@ -80,7 +75,11 @@ class QueueController extends Controller
     {
         $this->adminOnly();
 
-        $ticket->appointment->delete();
+        if ($ticket->appointment) {
+            $ticket->appointment->delete();
+        } else {
+            $ticket->delete();
+        }
 
         return back()->with('success', 'Запись удалена.');
     }
