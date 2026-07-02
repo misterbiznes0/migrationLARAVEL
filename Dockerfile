@@ -15,7 +15,6 @@ RUN composer install --no-dev --optimize-autoloader
 RUN npm install
 RUN npm run build
 
-RUN php artisan key:generate --force || true
 RUN php artisan migrate --force || true
 RUN php artisan db:seed --force || true
 
